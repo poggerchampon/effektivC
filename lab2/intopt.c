@@ -15,10 +15,6 @@ struct simplex_t{
     
 };
 
-static int isdigit_etc(int c){
-    return isdigit(c) || c == '-' || c == '.' || c == '0';
-}
-
 double** make_matrix(int m, int n){
     double** a;
     int i;
@@ -33,17 +29,25 @@ double* make_vector(int size){
     vec = calloc(size, sizeof(double));
     return vec;
 }
-
-simplex_t* init(int m, int n){
-    simplex_t* s;
-    s = malloc(sizeof(simplex_t));
+int select_nonbasic(simplex_t* s){
+    int i;
+    for(i=0; i < s->n; i++){
+        if(s->c[i] > 0.000001){
+            return i;
+        }
+    }
+    return -1;
+}
+int init(int m, int n, simplex_t* s){
     
+    int k,r;
     s->m = m;
     s->n = n;
     s->a = make_matrix(m,n);
     s->b = make_vector(m);
     s->c = make_vector(n);
     s->x = make_vector(n+1);
+    
 
     for (int i = 0; i < n; i += 1){
         scanf("%lf", &s->c[i]);
@@ -57,7 +61,21 @@ simplex_t* init(int m, int n){
     for (int i = 0; i < m; i += 1){
         scanf("%lf", &s->b[i]);     
     }
-    return s;
+
+    if(s->var == NULL){
+        s->var = calloc(m+n+1, sizeof(int));
+        for(int i=0; i < m+n; i++){
+            s->var[i] = i;
+        }
+    }
+    
+    for (k = 0, r = 1 ; r < m; r++){
+        if(s->b[r] < s->b[k]){
+            k = r;
+        }
+    }
+    
+    return k;
 }
 
 void pretty_print(simplex_t* s){
@@ -67,11 +85,13 @@ void pretty_print(simplex_t* s){
 }
 
 int main(int argc, char** argv){
-    int m,n;
+    int m,n,k;
     simplex_t* s;
+    s = malloc(sizeof(simplex_t));
     scanf("%d %d", &m, &n);
-    s = init(m,n);
+    k = init(m,n,s);
     pretty_print(s);
+    printf("%d", k);
 
     return 0;
 }
