@@ -42,6 +42,7 @@ int select_nonbasic(simplex_t* s){
 }
 
 void pretty_print(simplex_t* s);
+void intopt_print(simplex_t* s);
 void pivot(simplex_t* s, int row, int col);
 int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double* x, double y, int* var);
 double xsimplex(int m, int n, double** a, double* b, double* c, double* x, double y, int* var, int h);
@@ -186,6 +187,7 @@ int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double
 }
 
 void pivot(simplex_t* s, int row, int col){
+    printf("pivot row=%d, col=%d\n", row, col);
     glob+=1;
     double** a = s->a;
     double* b = s->b;
@@ -203,6 +205,11 @@ void pivot(simplex_t* s, int row, int col){
         }
     }
     c[col] = - c[col]/a[row][col];
+    for(i=0; i<m;i=i+1){
+        if (i!=row){
+            b[i] = b[i] - a[i][col] * b[row] / a[row][col];
+        }
+    }
     for(i=0; i<m;i=i+1){
         if (i!=row){
             for(j=0; j<n;j+=1){
@@ -231,6 +238,7 @@ double xsimplex(int m, int n, double** a, double* b, double* c, double* x, doubl
         return NAN;
     }
     while ((col = select_nonbasic(s))>=0){
+        intopt_print(s);
         row = -1;
         for (i = 0; i < m; i+=1){
             if (a[i][col]>EPSILON && (row < 0 || b[i]/a[i][col] < b[row]/a[row][col])){
@@ -243,6 +251,7 @@ double xsimplex(int m, int n, double** a, double* b, double* c, double* x, doubl
         }
         pivot(s, row,col);
     }
+    intopt_print(s);
     if (h == 0){
         for(i = 0; i <n; i+=1){
             if (s->var[i]<n){
@@ -259,7 +268,6 @@ double xsimplex(int m, int n, double** a, double* b, double* c, double* x, doubl
         for(i = 0; i < n; i+=1) x[i] = 0;
         for(i = n; i < n+m; i+=1) x[i] = s->b[i-n];
     }
-    pretty_print(s);
     return s->y;
 }
 
@@ -268,8 +276,24 @@ double simplex(int m, int n, double** a, double* b, double* c, double* x, double
     return xsimplex(m,n,a,b,c,x,y,NULL,0);
 }
 
+void intopt_print(simplex_t* s){
+    printf("maximize:\n");
+    for (int i = 0; i < s->n; i+=1) printf("%.2lf x_%d + ", s->c[i], s->var[i]);
+    printf("%.2lf \n", s->y);
+    printf("subject to:\n");
+    for (int i = 0; i < s->m; i+=1){
+        printf("x_%d = ", s->var[i+s->n]);
+        printf("%.2lf - (",s->c[i]);
+        for (int j = 0; j < s->n; j+=1){
+            printf("%.2lf x_%d", s->a[i][j], s->var[j]);
+            if (j+1<s->n) printf(" + ");
+        }
+        printf(")\n");
+    }
+}
+
 void pretty_print(simplex_t* s){
-    printf("max z = %10.3lfx + %10.3lfy \n", s->c[0], s->c[1] );
+    printf("max z = %10.3lfx + %10.3lfy \n", s->c[0], s->c[1]);
     for(int i=0; i<2;i++){
     printf("%10.3lfx %10.3lfy \u2264 %10.3lf \n", s->a[i][0], s->a[i][1], s->b[i]);}
 }
