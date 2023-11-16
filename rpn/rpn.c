@@ -25,7 +25,6 @@ void error_newline(){
 	printf("line %d: error at \\n\n", line);
 }
 
-
 int is_whitespace(int c) {
 	return c == ' ' || c == '\n' || c == '\t';
 }
@@ -60,19 +59,6 @@ int pop(){
 	index -= 1;
 	return ret_val;
 }
-int handle_digit(int c){
-	int num = 0;
-	int k = -1;
-	while (isdigit(c)){
-		num = num * 10 + (c-'0');
-		c = getchar();
-		if (!isdigit(c)){
-			k = c;
-		}
-	}
-	push(num);
-	return k;
-}
 
 void resolve_operator(int c){
 	int rhs = pop();
@@ -103,6 +89,19 @@ void resolve_operator(int c){
 	}
 }
 
+int handle_digit(int c){
+	int num = 0;
+	int k = -1;
+	while (isdigit(c)){
+		num = num * 10 + (c-'0');
+		c = getchar();
+		if (!isdigit(c)){
+			k = c;
+		}
+	}
+	push(num);
+	return k;
+}
 void resolve_whitespace(int c){
 	if (c != '\n'){
 		return;
@@ -137,7 +136,6 @@ int main(void)
 			resolve_operator(c);
 			continue;
 		}
-		
 	}
 	return 0;
 }

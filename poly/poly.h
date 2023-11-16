@@ -3,6 +3,7 @@
 
 typedef struct poly_t poly_t;
 
+
 poly_t*		new_poly_from_string(const char*);
 void		free_poly(poly_t*);
 

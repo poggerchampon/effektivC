@@ -45,7 +45,7 @@ void pretty_print(simplex_t* s);
 void intopt_print(simplex_t* s);
 void pivot(simplex_t* s, int row, int col);
 int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double* x, double y, int* var);
-double xsimplex(int m, int n, double** a, double* b, double* c, double* x, double y, int* var, int h);
+double xsimplex(simplex_t* s,int m, int n, double** a, double* b, double* c, double* x, double y, int* var, int h);
 int init(simplex_t* s, int m, int n, double** a, double* b, double* c, double* x, double y, int* var){
     glob+=1;
     int k,r;
@@ -227,18 +227,26 @@ void pivot(simplex_t* s, int row, int col){
     b[row] = b[row]/a[row][col];
     a[row][col]= 1/a[row][col];
 }
+void free_simplex(simplex_t* s){
+    free(s->var);
+    for (int i = 0; i < s->m; i+=1){
+    free(s->a[i]);
+    }
+    free(s->a);
+    free(s->b);
+    free(s->x);
+    free(s->c);
+    free(s);
+}
 
-double xsimplex(int m, int n, double** a, double* b, double* c, double* x, double y, int* var, int h){
+double xsimplex(simplex_t* s,int m, int n, double** a, double* b, double* c, double* x, double y, int* var, int h){
     glob+=1;
-    simplex_t* s;
-    s = malloc(sizeof(simplex_t));
     int i, row, col;
     if (!initial(s,m,n,a,b,c,x,y,var)){
-        free(s->var);
-        return NAN;
+        s->y=NAN;
+        return s->y;
     }
     while ((col = select_nonbasic(s))>=0){
-        intopt_print(s);
         row = -1;
         for (i = 0; i < m; i+=1){
             if (a[i][col]>EPSILON && (row < 0 || b[i]/a[i][col] < b[row]/a[row][col])){
@@ -246,12 +254,11 @@ double xsimplex(int m, int n, double** a, double* b, double* c, double* x, doubl
             }
         }
         if (row < 0){
-            free(s->var);
-            return INFINITY;
+            s->y=INFINITY;
+            return s->y;
         }
         pivot(s, row,col);
     }
-    intopt_print(s);
     if (h == 0){
         for(i = 0; i <n; i+=1){
             if (s->var[i]<n){
@@ -263,7 +270,6 @@ double xsimplex(int m, int n, double** a, double* b, double* c, double* x, doubl
                 x[s->var[n+i]] = s->b[i];
             }
         }
-        free(s->var);
     } else {
         for(i = 0; i < n; i+=1) x[i] = 0;
         for(i = n; i < n+m; i+=1) x[i] = s->b[i-n];
@@ -271,9 +277,9 @@ double xsimplex(int m, int n, double** a, double* b, double* c, double* x, doubl
     return s->y;
 }
 
-double simplex(int m, int n, double** a, double* b, double* c, double* x, double y){
+double simplex(simplex_t* s,int m, int n, double** a, double* b, double* c, double* x, double y){
     glob+=1;
-    return xsimplex(m,n,a,b,c,x,y,NULL,0);
+    return xsimplex(s,m,n,a,b,c,x,y,NULL,0);
 }
 
 void intopt_print(simplex_t* s){
@@ -301,18 +307,18 @@ void pretty_print(simplex_t* s){
 
 int main(int argc, char** argv){
     int m,n;
-    //simplex_t* s;
-    //s = malloc(sizeof(simplex_t));
+    simplex_t* s;
+    s = malloc(sizeof(simplex_t));
     scanf("%d %d", &m, &n);
     //pretty_print(s);
     double** a = make_matrix(m,n+1);
     double* b = make_vector(m);
     double* x = make_vector(n+1);
     double* c = make_vector(n);
-    double y;
-    double solution = simplex(m,n,a,b,c,x,y);
-    printf("\nz = %f\n", solution);
-    //TODO fix memleak
+    double y = 0;
+    double solution = simplex(s,m,n,a,b,c,x,y);
+    printf("\nz = %f\n", s->y);
+    free_simplex(s);
     return 0;
 }
 
