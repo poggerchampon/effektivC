@@ -41,7 +41,6 @@ int select_nonbasic(simplex_t* s){
     return -1;
 }
 
-void pretty_print(simplex_t* s);
 void intopt_print(simplex_t* s);
 void pivot(simplex_t* s, int row, int col);
 int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double* x, double y, int* var);
@@ -187,7 +186,6 @@ int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double
 }
 
 void pivot(simplex_t* s, int row, int col){
-    printf("pivot row=%d, col=%d\n", row, col);
     glob+=1;
     double** a = s->a;
     double* b = s->b;
@@ -296,12 +294,6 @@ void intopt_print(simplex_t* s){
         }
         printf(")\n");
     }
-}
-
-void pretty_print(simplex_t* s){
-    printf("max z = %10.3lfx + %10.3lfy \n", s->c[0], s->c[1]);
-    for(int i=0; i<2;i++){
-    printf("%10.3lfx %10.3lfy \u2264 %10.3lf \n", s->a[i][0], s->a[i][1], s->b[i]);}
 }
 
 

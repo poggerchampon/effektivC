@@ -31,6 +31,7 @@ int main(void)
 	poly_test("x^2 - 7x + 1", "3x + 2");
 	putchar('\n');
 	poly_test("x^10000000 + 2", "2x^2 + 3x + 4");
-
+	
 	return 0;
 }
+
