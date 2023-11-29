@@ -1,0 +1,7 @@
+Lab3 
+6. It complains about uninitialised values.
+7. Yes, it says the row where it says "int i;"
+8. No, it does not check array index OOB
+9. Nothing?
+10. As global it says we're trying to write 0 bytes to the right of the array. aka outofbound
+Local it says we're trying to write 120 bytes into the frame and that m48-52 n 64-68 local_array 80,120 and that mem acc overflows local_array.
