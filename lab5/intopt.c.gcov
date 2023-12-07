@@ -1,0 +1,912 @@
+        -:    0:Source:intopt.c
+        -:    0:Graph:intopt.gcno
+        -:    0:Data:intopt.gcda
+        -:    0:Runs:1
+        -:    0:Programs:1
+        -:    1:#include <stdio.h>
+        -:    2:#include <stdlib.h>
+        -:    3:#include <ctype.h>
+        -:    4:#include <math.h>
+        -:    5:#define EPSILON __FLT_EPSILON__
+        -:    6:typedef struct simplex_t  simplex_t;
+        -:    7:typedef struct node_t node_t;
+        -:    8:typedef struct list_t list_t;
+        -:    9:struct simplex_t{
+        -:   10:    int m;
+        -:   11:    int n;
+        -:   12:    int* var;
+        -:   13:    double** a;
+        -:   14:    double* b;
+        -:   15:    double* x;
+        -:   16:    double* c;
+        -:   17:    double y;
+        -:   18:    
+        -:   19:};
+        -:   20:struct node_t{
+        -:   21:    int m;
+        -:   22:    int n;
+        -:   23:    int k;
+        -:   24:    int h;
+        -:   25:    double xh;
+        -:   26:    double ak;
+        -:   27:    double bk;
+        -:   28:    double* min;
+        -:   29:    double* max;
+        -:   30:    double** a;
+        -:   31:    double* b;
+        -:   32:    double* x;
+        -:   33:    double* c;
+        -:   34:    double z;
+        -:   35:};
+        -:   36:struct list_t{
+        -:   37:    node_t* element;
+        -:   38:    list_t* next;
+        -:   39:};
+function make_matrix called 4 returned 100% blocks executed 100%
+        4:   40:double** make_matrix(int m, int n){
+        -:   41:    double** a;
+        -:   42:    int i;
+        4:   43:    a = calloc(m, sizeof(double*));
+       89:   44:    for (i = 0; i < m; i += 1)
+branch  0 taken 96%
+branch  1 taken 4% (fallthrough)
+       85:   45:    a[i] = calloc(n, sizeof(double));
+        4:   46:    return a;
+        -:   47:}
+        -:   48:
+function make_vector called 21 returned 100% blocks executed 100%
+       21:   49:double* make_vector(int size){
+        -:   50:    double* vec;
+       21:   51:    vec = calloc(size, sizeof(double));
+       21:   52:    return vec;
+        -:   53:}
+function select_nonbasic called 82 returned 100% blocks executed 100%
+       82:   54:int select_nonbasic(simplex_t* s){
+        -:   55:    int i;
+      522:   56:    for(i=0; i < s->n; i++){
+branch  0 taken 99%
+branch  1 taken 1% (fallthrough)
+      518:   57:        if(s->c[i] > EPSILON){
+branch  0 taken 15% (fallthrough)
+branch  1 taken 85%
+       78:   58:            return i;
+        -:   59:        }
+        -:   60:    }
+        4:   61:    return -1;
+        -:   62:}
+        -:   63:
+        -:   64:void intopt_print(simplex_t* s);
+        -:   65:void pivot(simplex_t* s, int row, int col);
+        -:   66:double intopt(int m, int n, double** a, double* b, double* c, double* x);
+        -:   67:void succ(node_t* p, list_t* h, int m, int n, double** a, double* b, double* c, int k, double ak, double bk, double* zp, double* x);
+        -:   68:int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double* x, double y, int* var);
+        -:   69:double xsimplex(int m, int n, double** a, double* b, double* c, double* x, double y, int* var, int h);
+        -:   70:node_t* initial_node(int m, int n, double** a, double* b, double* c);
+        -:   71:node_t* extend(node_t* p, int m, int n,double** a, double* b, double* c, int k, double ak, double bk);
+        -:   72:int is_integer(double* xp);
+        -:   73:int integer(node_t* p);
+        -:   74:void bound(node_t* p, list_t* h, double* zp, double* x);
+        -:   75:int branch(node_t* q, double z);
+        -:   76:void free_node(node_t* p);
+        -:   77:void free_list(list_t* h);
+        -:   78:void add_last(list_t* h, node_t* p);
+        -:   79:void shuffle_left(list_t* h);
+function init called 4 returned 100% blocks executed 100%
+        4:   80:int init(simplex_t* s, int m, int n, double** a, double* b, double* c, double* x, double y, int* var){
+        -:   81:    int i,k;
+        4:   82:    s->m = m;
+        4:   83:    s->n = n;
+        4:   84:    s->a = a;
+        4:   85:    s->b = b;
+        4:   86:    s->c = c;
+        4:   87:    s->x = x;
+        4:   88:    s->y = y;
+        4:   89:    s->var = var;
+        -:   90:
+        4:   91:    if (s->var == NULL){
+branch  0 taken 75% (fallthrough)
+branch  1 taken 25%
+        3:   92:        s->var = (int*) calloc(m+n+1, sizeof(int));
+        -:   93:        //s->var = (int*) malloc((m+n+1)*sizeof(int));
+      125:   94:        for(i = 0; i < m+n; i++){
+branch  0 taken 98%
+branch  1 taken 2% (fallthrough)
+      122:   95:            s->var[i] = i;
+        -:   96:        }
+        -:   97:    }
+        -:   98:    
+       83:   99:    for (k = 0, i = 1 ; i < m; i++){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       79:  100:        if(b[i] < b[k]){
+branch  0 taken 14% (fallthrough)
+branch  1 taken 86%
+       11:  101:            k = i;
+        -:  102:        }
+        -:  103:    }
+        -:  104:    
+        4:  105:    return k;
+        -:  106:}
+function initial_node called 1 returned 100% blocks executed 100%
+        1:  107:node_t* initial_node(int m, int n, double** a, double* b, double* c){
+        1:  108:    node_t* p = malloc(sizeof(node_t));
+        1:  109:    p->a = make_matrix(m+1, n+1);
+call    0 returned 100%
+        1:  110:    p->b = make_vector(m+1);
+call    0 returned 100%
+        1:  111:    p->c = make_vector(n+1);
+call    0 returned 100%
+        1:  112:    p->x = make_vector(n+1);
+call    0 returned 100%
+        1:  113:    p->min = make_vector(m);
+call    0 returned 100%
+        1:  114:    p->max= make_vector(n);
+call    0 returned 100%
+        1:  115:    p->m = m;
+        1:  116:    p->n = n;
+       21:  117:    for (int i = 0; i < m; i+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       20:  118:        p->b[i] = b[i];
+       20:  119:        for (int j = 0; j < n; j+=1) p->a[i][j] = a[i][j];
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+        -:  120:    }
+       21:  121:    for (int i = 0; i < n; i+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       20:  122:        p->c[i] = c[i];
+       20:  123:        p->min[i] = -INFINITY;
+       20:  124:        p->max[i] = INFINITY;
+        -:  125:    }
+        1:  126:    return p;
+        -:  127:}
+function extend called 2 returned 100% blocks executed 92%
+        2:  128:node_t* extend(node_t* p, int m, int n,double** a, double* b, double* c, int k, double ak, double bk){
+        2:  129:    node_t* q = malloc(sizeof(node_t));
+        -:  130:    int i,j;
+        2:  131:    q->k=k;
+        2:  132:    q->ak=ak;
+        2:  133:    q->bk=bk;
+        2:  134:    if (ak > 0 && p->max[k] < INFINITY){
+branch  0 taken 50% (fallthrough)
+branch  1 taken 50%
+branch  2 taken 0% (fallthrough)
+branch  3 taken 100%
+    #####:  135:        q->m = p->m;
+        2:  136:    } else if (ak < 0 && p->min[k] > 0)
+branch  0 taken 50% (fallthrough)
+branch  1 taken 50%
+branch  2 taken 0% (fallthrough)
+branch  3 taken 100%
+        -:  137:    {
+    #####:  138:        q->m=p->m;
+        -:  139:    } else {
+        2:  140:        q->m=p->m +1;
+        -:  141:    }
+        2:  142:    q->n = p->n;
+        2:  143:    q->h= -1;
+        2:  144:    q->a = make_matrix(q->m+1, q->n+1);
+call    0 returned 100%
+        2:  145:    q->b = make_vector(q->m+1);
+call    0 returned 100%
+        2:  146:    q->c = make_vector(q->n+1);
+call    0 returned 100%
+        2:  147:    q->x = make_vector(q->n+1);
+call    0 returned 100%
+        2:  148:    q->min = make_vector(n);
+call    0 returned 100%
+        2:  149:    q->max = make_vector(n);
+call    0 returned 100%
+       42:  150:    for (i = 0; i < n; i+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       40:  151:        q->min[i] = p->min[i];
+       40:  152:        q->max[i] = p->max[i];
+       40:  153:        q->c[i] = c[i];
+        -:  154:    }
+       42:  155:    for (i = 0; i < m; i+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       40:  156:        q->b[i] = b[i];
+       40:  157:        for (j = 0; j < n; j+=1) q->a[i][j] = a[i][j];
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+        -:  158:    }
+        2:  159:    if (ak > 0){
+branch  0 taken 50% (fallthrough)
+branch  1 taken 50%
+        1:  160:        if (q->max[k] == -INFINITY || bk < q->max[k]){
+branch  0 taken 100% (fallthrough)
+branch  1 taken 0%
+branch  2 taken 100% (fallthrough)
+branch  3 taken 0%
+        1:  161:            q->max[k] = bk;
+        -:  162:        }
+        1:  163:    } else if (q->min[k] == -INFINITY ||-bk > q->min[k])
+branch  0 taken 0% (fallthrough)
+branch  1 taken 100%
+branch  2 never executed
+branch  3 never executed
+        -:  164:    {
+        1:  165:        q->min[k] = -bk;
+        -:  166:    }
+       42:  167:    for (i = m, j = 0; j < n; j+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       40:  168:        if(q->min[j]>-INFINITY){
+branch  0 taken 3% (fallthrough)
+branch  1 taken 98%
+        1:  169:            q->a[i][j] = -1;
+        1:  170:            q->b[i] = -q->min[j];
+        1:  171:            i += 1;
+        -:  172:        }
+       40:  173:        if(q->max[j]<INFINITY){
+branch  0 taken 3% (fallthrough)
+branch  1 taken 98%
+        1:  174:            q->a[i][j] = 1;
+        1:  175:            q->b[i] = q->max[j];
+        1:  176:            i+=1;
+        -:  177:        }
+        -:  178:    }
+        2:  179:    return q;
+        -:  180:}
+function is_integer called 9 returned 100% blocks executed 100%
+        9:  181:int is_integer(double* xp){
+        9:  182:    double x = *xp;
+        9:  183:    double r = round(x);
+        9:  184:    if (fabs(r-x) < EPSILON){
+branch  0 taken 44% (fallthrough)
+branch  1 taken 56%
+        4:  185:        *xp = r;
+        4:  186:        return 1;
+        -:  187:    }
+        5:  188:    return 0;
+        -:  189:}
+function integer called 4 returned 100% blocks executed 88%
+        4:  190:int integer(node_t* p){
+        -:  191:    int i;
+        8:  192:    for (i = 0; i < p->n; i+=1){
+branch  0 taken 100%
+branch  1 taken 0% (fallthrough)
+        8:  193:        if (!is_integer(&p->x[i])){
+call    0 returned 100%
+branch  1 taken 50% (fallthrough)
+branch  2 taken 50%
+        4:  194:            return 0;
+        -:  195:        }
+        -:  196:    }
+    #####:  197:    return 1;
+        -:  198:}
+function shuffle_left called 0 returned 0% blocks executed 0%
+    #####:  199:void shuffle_left(list_t* h){
+    #####:  200:    list_t* current = h;
+    #####:  201:    if (current->next!=NULL){
+branch  0 never executed
+branch  1 never executed
+    #####:  202:        free_node(current->element);
+call    0 never executed
+        -:  203:    }
+    #####:  204:    while (current->next != NULL){
+branch  0 never executed
+branch  1 never executed
+    #####:  205:        current->element = current->next->element;
+    #####:  206:        current = current->next;
+        -:  207:    }
+    #####:  208:    free(current);
+    #####:  209:}
+function delete_node called 0 returned 0% blocks executed 0%
+    #####:  210:void delete_node(list_t* h, double bound){
+    #####:  211:    list_t* current = h;
+    #####:  212:    list_t* prev = NULL;
+    #####:  213:    while(current != NULL){
+branch  0 never executed
+branch  1 never executed
+    #####:  214:        node_t* q = current->element;
+    #####:  215:        if(q->z<bound){
+branch  0 never executed
+branch  1 never executed
+    #####:  216:            if (prev != NULL){
+branch  0 never executed
+branch  1 never executed
+    #####:  217:                prev->next = current->next;
+    #####:  218:                free_node(q);
+call    0 never executed
+    #####:  219:                free(current);
+    #####:  220:                current = prev->next;
+        -:  221:            } else {
+    #####:  222:                shuffle_left(h); // this could turn h into NULL;
+call    0 never executed
+        -:  223:            }
+        -:  224:        } else {
+    #####:  225:            current = current->next;
+        -:  226:        }
+        -:  227:
+        -:  228:    }
+    #####:  229:}
+function bound called 0 returned 0% blocks executed 0%
+    #####:  230:void bound(node_t* p, list_t* h, double* zp, double* x){
+    #####:  231:    if(p->z > *zp){
+branch  0 never executed
+branch  1 never executed
+    #####:  232:        *zp = p->z;
+    #####:  233:        for (int i = 0; i < p->n; i+=1) p->x[i] = x[i];
+branch  0 never executed
+branch  1 never executed
+    #####:  234:        delete_node(h, p->z);
+call    0 never executed
+        -:  235:    }
+    #####:  236:}
+function branch called 3 returned 100% blocks executed 77%
+        3:  237:int branch(node_t* q, double z){
+        -:  238:    double min, max;
+        3:  239:    if (q->z<z)
+branch  0 taken 67% (fallthrough)
+branch  1 taken 33%
+        -:  240:    {
+        2:  241:        return 0;
+        -:  242:    }
+        1:  243:    for (int h = 0; h <q->n; h+=1){
+branch  0 taken 100%
+branch  1 taken 0% (fallthrough)
+        1:  244:        if (!is_integer(&q->x[h])){
+call    0 returned 100%
+branch  1 taken 100% (fallthrough)
+branch  2 taken 0%
+        -:  245:            if (q->min[h] < -INFINITY) min = 0;
+        1:  246:            else min = q->min[h];
+        1:  247:            max = q->max[h];
+        1:  248:            if (floor(q->x[h])<min || ceil(q->x[h])>max){
+branch  0 taken 100% (fallthrough)
+branch  1 taken 0%
+branch  2 taken 0% (fallthrough)
+branch  3 taken 100%
+    #####:  249:                continue;
+        -:  250:            }
+        1:  251:            q->h = h;
+        1:  252:            q->xh = q->x[h];
+        -:  253:            /*
+        -:  254:            for (int i = 0; i < q->m+1; i+=1){
+        -:  255:                free(q->a[i]);
+        -:  256:            }
+        -:  257:            free(q->a);
+        -:  258:            free(q->b);
+        -:  259:            free(q->c);
+        -:  260:            free(q->x);
+        -:  261:            */
+        1:  262:            return 1;
+        -:  263:        }
+        -:  264:    }
+    #####:  265:    return 0;
+        -:  266:}
+function free_node called 3 returned 100% blocks executed 95%
+        3:  267:void free_node(node_t* p){
+        3:  268:    if(p == NULL){
+branch  0 taken 0% (fallthrough)
+branch  1 taken 100%
+    #####:  269:        return;
+        -:  270:    }
+        3:  271:    if (p->min != NULL){
+branch  0 taken 100% (fallthrough)
+branch  1 taken 0%
+        3:  272:    free(p->min);
+        -:  273:    }
+        3:  274:    if (p->max != NULL){
+branch  0 taken 100% (fallthrough)
+branch  1 taken 0%
+        3:  275:    free(p->max);
+        -:  276:    }
+        3:  277:    if (p->b != NULL){
+branch  0 taken 100% (fallthrough)
+branch  1 taken 0%
+        3:  278:        free(p->b);
+        -:  279:    }
+        3:  280:    if (p->c != NULL){
+branch  0 taken 100% (fallthrough)
+branch  1 taken 0%
+        3:  281:        free(p->c);
+        -:  282:    }
+        3:  283:    if (p->x != NULL){
+branch  0 taken 100% (fallthrough)
+branch  1 taken 0%
+        3:  284:        free(p->x);
+        -:  285:    }
+        3:  286:    if (p->a != NULL){
+branch  0 taken 100% (fallthrough)
+branch  1 taken 0%
+       68:  287:        for (int i = 0; i < p->m+1; i+=1){
+branch  0 taken 96%
+branch  1 taken 4% (fallthrough)
+       65:  288:            free(p->a[i]);
+        -:  289:        }
+        3:  290:        free(p->a);
+        -:  291:    }
+        3:  292:    free(p);
+        -:  293:}
+function free_list called 1 returned 100% blocks executed 60%
+        1:  294:void free_list(list_t* h){
+        1:  295:    list_t* next = h;
+        2:  296:    while (next != NULL){
+branch  0 taken 0%
+branch  1 taken 100% (fallthrough)
+    #####:  297:        free_node(h->element);
+call    0 never executed
+    #####:  298:        list_t* temp = next->next;
+    #####:  299:        free(next);
+    #####:  300:        next = temp;
+        -:  301:    }
+        1:  302:}
+function prepare called 1 returned 100% blocks executed 100%
+        1:  303:void prepare(simplex_t* s, int k){
+        1:  304:    int m = s->m;
+        1:  305:    int n = s->n;
+        -:  306:    int i;
+        -:  307:    //making room for x_m+n @ var[n] by moving var[n..n+m-1] one step
+       22:  308:    for(i = m +n; i > n; i-=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       21:  309:        s->var[i]=s->var[i-1];
+        -:  310:    }
+        1:  311:    s->var[n] = m+n;
+        1:  312:    n = n+1;
+       22:  313:    for (i=0; i<m; i+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       21:  314:        s->a[i][n-1]=-1;
+        -:  315:    }
+        -:  316:    //free(s.x); /* NOTE: This might not be required*/
+        1:  317:    s->x = make_vector(m+n);
+call    0 returned 100%
+        -:  318:    //free(s.c); /* NOTE: This might not be required*/
+        1:  319:    s->c = make_vector(n);
+call    0 returned 100%
+        1:  320:    s->c[n-1] = -1;
+        1:  321:    s->n = n;
+        1:  322:    pivot(s,k,n-1);
+call    0 returned 100%
+        1:  323:}
+function initial called 4 returned 100% blocks executed 84%
+        4:  324:int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double* x, double y, int* var){
+        -:  325:    int i,j,k;
+        -:  326:    double w;
+        4:  327:    k = init(s, m, n, a, b, c, x, y, var);
+call    0 returned 100%
+        4:  328:    if (s->b[k]>=0){
+branch  0 taken 75% (fallthrough)
+branch  1 taken 25%
+        3:  329:        return 1;
+        -:  330:    }
+        1:  331:    prepare(s,k);
+call    0 returned 100%
+        1:  332:    n = s->n;
+        1:  333:    s->y = xsimplex(m,n,s->a, s->b, s->c, s->x,0, s->var,1);
+call    0 returned 100%
+        8:  334:    for (i = 0; i < m+n; i+=1){
+branch  0 taken 100%
+branch  1 taken 0% (fallthrough)
+        8:  335:        if (s->var[i]==(s->m+s->n-1)){
+branch  0 taken 13% (fallthrough)
+branch  1 taken 88%
+        1:  336:        if (fabs(s->x[i])>EPSILON){
+branch  0 taken 0% (fallthrough)
+branch  1 taken 100%
+    #####:  337:            free(s->x);
+    #####:  338:            free(s->c);
+    #####:  339:            return 0;
+        -:  340:        } else {
+        1:  341:            break;
+        -:  342:        }
+        -:  343:        }
+        -:  344:    }
+        1:  345:    if (i>=n){
+branch  0 taken 0% (fallthrough)
+branch  1 taken 100%
+    #####:  346:        for (j = k = 0; k<n; k +=1){
+branch  0 never executed
+branch  1 never executed
+    #####:  347:            if (fabs(s->a[i-n][k]) > fabs(s->a[i-n][j])){
+branch  0 never executed
+branch  1 never executed
+    #####:  348:                j = k;
+        -:  349:            }
+        -:  350:        }
+    #####:  351:        pivot(s, i-n, j);
+call    0 never executed
+    #####:  352:        i = j;
+        -:  353:    }
+        1:  354:    if (i < n-1){
+branch  0 taken 100% (fallthrough)
+branch  1 taken 0%
+        1:  355:        k = s->var[i];
+        1:  356:        s->var[i] = s->var[n-1];
+        1:  357:        s->var[n-1] = k;
+       22:  358:        for(k = 0; k < m; k+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       21:  359:            w = s->a[k][n-1];
+       21:  360:            s->a[k][n-1] = s->a[k][i];
+       21:  361:            s->a[k][i] = w;
+        -:  362:        }
+        -:  363:    } else {
+        -:  364:        //we do nothing
+        -:  365:    }
+        1:  366:    free(s->c);
+        1:  367:    s->c = c;
+        -:  368:    //free(s.y) // TODO if we have memory leak
+        1:  369:    s->y = y;
+       22:  370:    for (k = n-1; k < n+m-1; k+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       21:  371:        s->var[k] = s->var[k+1];
+        -:  372:    }
+        1:  373:    n = s->n = s->n-1;
+        1:  374:    double* t = make_vector(n);
+call    0 returned 100%
+       21:  375:    for (k = 0; k<n; k +=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+      243:  376:        for (j = 0; j < n; j+=1){
+branch  0 taken 99%
+branch  1 taken 1% (fallthrough)
+      241:  377:            if (k == s->var[j]){
+branch  0 taken 7% (fallthrough)
+branch  1 taken 93%
+       18:  378:                t[j] = t[j] + s->c[k];
+       18:  379:                goto next_k;
+        -:  380:            }
+        -:  381:        }
+       31:  382:        for (j = 0; j<m; j+=1){
+branch  0 taken 100%
+branch  1 taken 0% (fallthrough)
+       31:  383:            if(s->var[n+j]==k){
+branch  0 taken 6% (fallthrough)
+branch  1 taken 94%
+        2:  384:                break;
+        -:  385:            }
+        -:  386:        }
+        2:  387:        s->y = s->y + s->c[k]*s->b[j];
+       42:  388:        for(i = 0; i < n; i += 1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       40:  389:            t[i]=t[i]-s->c[k]*s->a[j][i];
+        -:  390:        }
+        2:  391:        next_k:;
+        -:  392:    }
+        1:  393:    for (i = 0; i < n; i+=1) s->c[i] = t[i];
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+        1:  394:    free(t);
+        1:  395:    free(s->x);
+        1:  396:    return 1;
+        -:  397:}
+function pivot called 79 returned 100% blocks executed 100%
+       79:  398:void pivot(simplex_t* s, int row, int col){
+       79:  399:    printf("row=%d, col=%d\n", row, col);
+call    0 returned 100%
+       79:  400:    double** a = s->a;
+       79:  401:    double* b = s->b;
+       79:  402:    double* c = s->c;
+       79:  403:    int m = s->m;
+       79:  404:    int n = s->n;
+        -:  405:    int i,j,t;
+       79:  406:    t = s->var[col];
+       79:  407:    s->var[col] = s->var[n+row];
+       79:  408:    s->var[n+row] = t;
+       79:  409:    s->y = s->y+c[col]*b[row]/a[row][col];
+     1662:  410:    for (i = 0; i < n; i = i+1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+     1583:  411:        if (i != col){
+branch  0 taken 95% (fallthrough)
+branch  1 taken 5%
+     1504:  412:            c[i] = c[i]-c[col]*a[row][i]/a[row][col];
+        -:  413:        }
+        -:  414:    }
+       79:  415:    c[col] = - c[col]/a[row][col];
+     1717:  416:    for(i=0; i<m;i=i+1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+     1638:  417:        if (i!=row){
+branch  0 taken 95% (fallthrough)
+branch  1 taken 5%
+     1559:  418:            b[i] = b[i] - a[i][col] * b[row] / a[row][col];
+        -:  419:        }
+        -:  420:    }
+     1717:  421:    for(i=0; i<m;i=i+1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+     1638:  422:        if (i!=row){
+branch  0 taken 95% (fallthrough)
+branch  1 taken 5%
+    32799:  423:            for(j=0; j<n;j+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+    31240:  424:                if(j!=col){
+branch  0 taken 95% (fallthrough)
+branch  1 taken 5%
+    29681:  425:                    a[i][j] = a[i][j] - a[i][col]*a[row][j]/a[row][col];
+        -:  426:                }
+        -:  427:            }
+        -:  428:        }
+        -:  429:    }
+     1717:  430:    for(i=0; i < m; i +=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+     1638:  431:        if(i!=row){
+branch  0 taken 95% (fallthrough)
+branch  1 taken 5%
+     1559:  432:            a[i][col] = -a[i][col]/a[row][col];
+        -:  433:        }
+        -:  434:    }
+     1662:  435:    for(i = 0; i < n; i+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+     1583:  436:        if (i != col){
+branch  0 taken 95% (fallthrough)
+branch  1 taken 5%
+     1504:  437:            a[row][i] = a[row][i]/a[row][col];
+        -:  438:        }
+        -:  439:    }
+       79:  440:    b[row] = b[row]/a[row][col];
+       79:  441:    a[row][col]= 1/a[row][col];
+       79:  442:}
+function add_last called 0 returned 0% blocks executed 0%
+    #####:  443:void add_last(list_t* h, node_t* p){
+    #####:  444:    while (h->next != NULL){
+branch  0 never executed
+branch  1 never executed
+    #####:  445:        h = h->next;
+        -:  446:    }
+    #####:  447:    h->next = malloc(sizeof(list_t));
+    #####:  448:    h->next->element = p;
+    #####:  449:}
+function xsimplex called 4 returned 100% blocks executed 95%
+        4:  450:double xsimplex(int m, int n, double** a, double* b, double* c, double* x, double y, int* var, int h){
+        -:  451:    simplex_t s;
+        -:  452:    int i, row, col;
+        4:  453:    if (!initial(&s,m,n,a,b,c,x,y,var)){
+call    0 returned 100%
+branch  1 taken 0% (fallthrough)
+branch  2 taken 100%
+    #####:  454:        free(s.var);
+    #####:  455:        return NAN;
+        -:  456:    }
+       86:  457:    while ((col = select_nonbasic(&s))>=0){
+call    0 returned 100%
+branch  1 taken 95%
+branch  2 taken 5% (fallthrough)
+       78:  458:        row = -1;
+     1695:  459:        for (i = 0; i < m; i+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+     1617:  460:            if (a[i][col]>EPSILON &&
+branch  0 taken 49% (fallthrough)
+branch  1 taken 51%
+branch  2 taken 90% (fallthrough)
+branch  3 taken 10%
+      716:  461:             (row < 0 || (b[i]/a[i][col] < b[row]/a[row][col]))){
+branch  0 taken 18% (fallthrough)
+branch  1 taken 82%
+      205:  462:                row = i;
+        -:  463:            }
+        -:  464:        }
+       78:  465:        if (row < 0){
+branch  0 taken 0% (fallthrough)
+branch  1 taken 100%
+    #####:  466:            free(s.var);
+    #####:  467:            return INFINITY;
+        -:  468:        }
+       78:  469:        pivot(&s, row,col);
+call    0 returned 100%
+        -:  470:    }
+        4:  471:    if (h == 0){
+branch  0 taken 75% (fallthrough)
+branch  1 taken 25%
+       63:  472:        for(i = 0; i <n; i+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       60:  473:            if (s.var[i]<n){
+branch  0 taken 58% (fallthrough)
+branch  1 taken 42%
+       35:  474:                x[s.var[i]] = 0;
+        -:  475:            }
+        -:  476:        }
+       65:  477:        for(i = 0; i <m; i+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       62:  478:            if (s.var[n+i]<n){
+branch  0 taken 40% (fallthrough)
+branch  1 taken 60%
+       25:  479:                x[s.var[n+i]] = s.b[i];
+        -:  480:            }
+        -:  481:        }
+        3:  482:        free(s.var);
+        -:  483:    } else {
+        1:  484:        for(i = 0; i < n; i+=1) x[i] = 0;
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+        1:  485:        for(i = n; i < n+m; i+=1) x[i] = s.b[i-n];
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+        -:  486:    }
+        4:  487:    return s.y;
+        -:  488:}
+function simplex called 3 returned 100% blocks executed 100%
+        3:  489:double simplex(int m, int n, double** a, double* b, double* c, double* x, double y){
+        3:  490:    return xsimplex(m,n,a,b,c,x,y,NULL,0);
+call    0 returned 100%
+        -:  491:}
+function intopt_print called 0 returned 0% blocks executed 0%
+    #####:  492:void intopt_print(simplex_t* s){
+    #####:  493:    printf("maximize:\n");
+call    0 never executed
+    #####:  494:    for (int i = 0; i < s->n; i+=1) printf("%.2lf x_%d + ", s->c[i], s->var[i]);
+call    0 never executed
+branch  1 never executed
+branch  2 never executed
+    #####:  495:    printf("%.2lf \n", s->y);
+call    0 never executed
+    #####:  496:    printf("subject to:\n");
+call    0 never executed
+    #####:  497:    for (int i = 0; i < s->m; i+=1){
+branch  0 never executed
+branch  1 never executed
+    #####:  498:        printf("x_%d = ", s->var[i+s->n]);
+call    0 never executed
+    #####:  499:        printf("%.2lf - (",s->b[i]);
+call    0 never executed
+    #####:  500:        for (int j = 0; j < s->n; j+=1){
+branch  0 never executed
+branch  1 never executed
+    #####:  501:            printf("%.2lf x_%d", s->a[i][j], s->var[j]);
+call    0 never executed
+    #####:  502:            if (j+1<s->n) printf(" + ");
+branch  0 never executed
+branch  1 never executed
+call    2 never executed
+        -:  503:        }
+    #####:  504:        printf(")\n");
+call    0 never executed
+        -:  505:    }
+    #####:  506:}
+function succ called 2 returned 100% blocks executed 71%
+        2:  507:void succ(node_t* p, list_t* h, int m, int n, double** a, double* b, double* c, int k, double ak, double bk, double* zp, double* x){
+        2:  508:    node_t* q = extend(p,m,n,a,b,c,k,ak,bk);
+call    0 returned 100%
+        2:  509:    if (q==NULL) return;
+branch  0 taken 0% (fallthrough)
+branch  1 taken 100%
+        2:  510:    q->z = simplex(q->m, q->n, q->a,q->b, q->c,q->x,0);
+call    0 returned 100%
+        2:  511:    if (isfinite(q->z)){
+branch  0 taken 100% (fallthrough)
+branch  1 taken 0%
+        2:  512:        if (integer(q)) {
+call    0 returned 100%
+branch  1 taken 0% (fallthrough)
+branch  2 taken 100%
+    #####:  513:            bound(q, h, zp, x);
+call    0 never executed
+        -:  514:        }
+        2:  515:        else if (branch(q,*zp))
+call    0 returned 100%
+branch  1 taken 0% (fallthrough)
+branch  2 taken 100%
+        -:  516:        {
+    #####:  517:            add_last(h,q);
+call    0 never executed
+    #####:  518:            return;
+        -:  519:        }
+        -:  520:        
+        -:  521:    }
+        2:  522:    free_node(q);
+call    0 returned 100%
+        -:  523:}
+function intopt called 1 returned 100% blocks executed 76%
+        1:  524:double intopt(int m, int n, double** a, double* b, double* c, double* x){
+        1:  525:    node_t* p = initial_node(m, n, a,b,c);
+call    0 returned 100%
+        1:  526:    list_t* h = malloc(sizeof(list_t));
+        1:  527:    h->element = p;
+        1:  528:    h->next = NULL;
+        1:  529:    double z = -INFINITY;
+        1:  530:    p->z = simplex(p->m, p->n,p->a,p->b,p->c,p->x, 0);
+call    0 returned 100%
+        1:  531:    if (integer(p) || isfinite(p->z)){
+call    0 returned 100%
+branch  1 taken 100% (fallthrough)
+branch  2 taken 0%
+branch  3 taken 100% (fallthrough)
+branch  4 taken 0%
+        1:  532:        z = p->z;
+        1:  533:        if (integer(p)){
+call    0 returned 100%
+branch  1 taken 0% (fallthrough)
+branch  2 taken 100%
+    #####:  534:            for (int i  = 0; i < n; i+=1){
+branch  0 never executed
+branch  1 never executed
+    #####:  535:                x[i] = p->x[i];
+        -:  536:            }
+    #####:  537:            free_list(h);
+call    0 never executed
+    #####:  538:            return z;
+        -:  539:        }
+        -:  540:    }
+        1:  541:    branch(p,z);
+call    0 returned 100%
+        3:  542:    while (h != NULL){
+branch  0 taken 50%
+branch  1 taken 50% (fallthrough)
+        1:  543:        p = h->element;
+        1:  544:        succ(p,h,m,n,a,b,c,p->h, 1, floor(p->xh), &z, x);
+call    0 returned 100%
+        1:  545:        succ(p,h,m,n,a,b,c,p->h, -1, -ceil(p->xh), &z, x);
+call    0 returned 100%
+        1:  546:        free_node(p);
+call    0 returned 100%
+        1:  547:        list_t* temp = h->next;
+        1:  548:        free(h);
+        1:  549:        h = temp;
+        -:  550:    }
+        1:  551:    free_list(h);
+call    0 returned 100%
+        1:  552:    if (z == -INFINITY) return NAN;
+branch  0 taken 0% (fallthrough)
+branch  1 taken 100%
+        1:  553:    return z;
+        -:  554:}
+function main called 1 returned 100% blocks executed 100%
+        1:  555:int main(int argc, char** argv){
+        -:  556:    int m,n;
+        1:  557:    scanf("%d %d", &m, &n);
+call    0 returned 100%
+        1:  558:    double** a = make_matrix(m,n+1);
+call    0 returned 100%
+        1:  559:    double* b = make_vector(m);
+call    0 returned 100%
+        1:  560:    double* x = make_vector(n+1);
+call    0 returned 100%
+        1:  561:    double* c = make_vector(n);
+call    0 returned 100%
+       21:  562:    for (int i = 0; i < n; i += 1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       20:  563:        scanf("%lf", &c[i]);
+call    0 returned 100%
+        -:  564:    }
+        -:  565:
+       21:  566:    for (int i = 0; i < m; i += 1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+      420:  567:        for (int j = 0; j < n; j += 1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+      400:  568:            scanf("%lf", &a[i][j]);      
+call    0 returned 100%
+        -:  569:        }
+        -:  570:    }
+       21:  571:    for (int i = 0; i < m; i += 1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       20:  572:        scanf("%lf", &b[i]);     
+call    0 returned 100%
+        -:  573:    }
+        1:  574:    double y = 0;
+        1:  575:    double solution = intopt(m, n, a,b,c,x);
+call    0 returned 100%
+        1:  576:    printf("\nz = %f\n", solution);
+call    0 returned 100%
+        -:  577:    //free_simplex(s);
+       21:  578:    for (int i = 0; i < m; i+=1){
+branch  0 taken 95%
+branch  1 taken 5% (fallthrough)
+       20:  579:        free(a[i]);
+        -:  580:    }
+        1:  581:    free(a);
+        1:  582:    free(b);
+        1:  583:    free(c);
+        1:  584:    free(x);
+        1:  585:    return 0;
+        -:  586:}
+        -:  587:

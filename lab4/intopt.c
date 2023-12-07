@@ -396,7 +396,6 @@ int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double
     return 1;
 }
 void pivot(simplex_t* s, int row, int col){
-    printf("row=%d, col=%d\n", row, col);
     double** a = s->a;
     double* b = s->b;
     double* c = s->c;

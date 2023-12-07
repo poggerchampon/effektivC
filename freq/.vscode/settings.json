@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "poly.h": "c"
+        "poly.h": "c",
+        "stdlib.h": "c"
     }
 }

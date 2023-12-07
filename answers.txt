@@ -5,3 +5,50 @@ Lab3
 9. Nothing?
 10. As global it says we're trying to write 0 bytes to the right of the array. aka outofbound
 Local it says we're trying to write 120 bytes into the frame and that m48-52 n 64-68 local_array 80,120 and that mem acc overflows local_array.
+Lab4
+5. pivot
+6. The total number of calls,what is caling it. how much time is spent inside and how much time is spent in total in it's call?
+7. #### means was not run, - doesn't have to be run and x says how many times that line was run.
+The most called is the  
+32799:  423:            for(j=0; j<n;j+=1){^M
+31240:  424:                if(j!=col){^M
+29681:  425:                    a[i][j] = a[i][j] - a[i][col]*a[row][j]/a[row][col];^M
+-b also shows how the branching is done.
+8.
+I   refs:      223,165
+I1  misses:      1,258
+LLi misses:      1,035
+I1  miss rate:    0.56%
+LLi miss rate:    0.46%
+
+D   refs:       68,381  (49,617 rd   + 18,764 wr)
+D1  misses:      2,343  ( 1,808 rd   +    535 wr)
+LLd misses:      1,842  ( 1,357 rd   +    485 wr)
+D1  miss rate:     3.4% (   3.6%     +    2.9%  )
+LLd miss rate:     2.7% (   2.7%     +    2.6%  )
+
+LL refs:         3,601  ( 3,066 rd   +    535 wr)
+LL misses:       2,877  ( 2,392 rd   +    485 wr)
+LL miss rate:      1.0% (   0.9%     +    2.6%  )
+
+I refs: total, D refs 49k read(load) 19k (write store)
+The LL cache miss rate seemsw way off.2.8/3.6k != 0.01
+Lab 5
+9.
+Cycle 49
+Cycle 340
+2.91 = ~3 cycles/iteration
+
+Cycle 50
+Cycle 651
+6.01 = ~6 cycles/itr
+
+Program B can't optimize to maximally use all fALU since it needs to wait for a[i-1] to calculate a[i].
+While program A can do a[i+1] while a[i] is still computed and it just needs to wait for Databus/f-ALU to be available
+
+12.
+std, cmpi or bc bc can't jump until cmpi is done, and cmpi waits for earlier arithmetic to be completed.
+rldicr b.c.o EAT full ?
+lbzx slow
+13.
+rename is to our understanding using different registers to allow more parallelism in the CPU without having to wait for other (non-related) instructions to finish.
