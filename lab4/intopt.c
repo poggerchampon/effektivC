@@ -157,7 +157,7 @@ node_t* extend(node_t* p, int m, int n,double** a, double* b, double* c, int k, 
         for (j = 0; j < n; j+=1) q->a[i][j] = a[i][j];
     }
     if (ak > 0){
-        if (q->max[k] == -INFINITY || bk < q->max[k]){
+        if (q->max[k] == INFINITY || bk < q->max[k]){
             q->max[k] = bk;
         }
     } else if (q->min[k] == -INFINITY ||-bk > q->min[k])
@@ -198,12 +198,17 @@ int integer(node_t* p){
 }
 void shuffle_left(list_t* h){
     list_t* current = h;
+    list_t* prev = NULL;
     if (current->next!=NULL){
         free_node(current->element);
     }
     while (current->next != NULL){
         current->element = current->next->element;
+        prev = current;
         current = current->next;
+    }
+    if (prev != NULL){
+    prev->next = NULL;
     }
     free(current);
 }
@@ -230,7 +235,7 @@ void delete_node(list_t* h, double bound){
 void bound(node_t* p, list_t* h, double* zp, double* x){
     if(p->z > *zp){
         *zp = p->z;
-        for (int i = 0; i < p->n; i+=1) p->x[i] = x[i];
+        for (int i = 0; i < p->n; i+=1) x[i] = p->x[i];
         delete_node(h, p->z);
     }
 }
@@ -242,7 +247,7 @@ int branch(node_t* q, double z){
     }
     for (int h = 0; h <q->n; h+=1){
         if (!is_integer(&q->x[h])){
-            if (q->min[h] < -INFINITY) min = 0;
+            if (q->min[h] == -INFINITY) min = 0;
             else min = q->min[h];
             max = q->max[h];
             if (floor(q->x[h])<min || ceil(q->x[h])>max){
@@ -250,15 +255,6 @@ int branch(node_t* q, double z){
             }
             q->h = h;
             q->xh = q->x[h];
-            /*
-            for (int i = 0; i < q->m+1; i+=1){
-                free(q->a[i]);
-            }
-            free(q->a);
-            free(q->b);
-            free(q->c);
-            free(q->x);
-            */
             return 1;
         }
     }
@@ -396,6 +392,7 @@ int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double
     return 1;
 }
 void pivot(simplex_t* s, int row, int col){
+    printf("row=%d, col=%d\n", row, col);
     double** a = s->a;
     double* b = s->b;
     double* c = s->c;
@@ -445,6 +442,7 @@ void add_last(list_t* h, node_t* p){
     }
     h->next = malloc(sizeof(list_t));
     h->next->element = p;
+    h->next->next = NULL;
 }
 double xsimplex(int m, int n, double** a, double* b, double* c, double* x, double y, int* var, int h){
     simplex_t s;
@@ -525,17 +523,17 @@ double intopt(int m, int n, double** a, double* b, double* c, double* x){
     list_t* h = malloc(sizeof(list_t));
     h->element = p;
     h->next = NULL;
-    double z = -INFINITY;
+    double z = -INFINITY; //best so far
     p->z = simplex(p->m, p->n,p->a,p->b,p->c,p->x, 0);
-    if (integer(p) || isfinite(p->z)){
+    if (integer(p) || !isfinite(p->z)){
         z = p->z;
         if (integer(p)){
             for (int i  = 0; i < n; i+=1){
                 x[i] = p->x[i];
             }
-            free_list(h);
-            return z;
         }
+        free_list(h);
+        return z;
     }
     branch(p,z);
     while (h != NULL){
