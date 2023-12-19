@@ -197,50 +197,35 @@ int integer(node_t* p){
     return 1;
 }
 void shuffle_left(list_t* h){
-    list_t* current_node = h;
-    list_t* previous_node = NULL;
-    free_node(current_node->element);
-    current_node->element = NULL;
-    previous_node = current_node;
-    current_node=current_node->next;
-    while (current_node!=NULL){
-        previous_node->element = current_node->element;
-        previous_node = current_node;
-        current_node = current_node->next;
-    }
-    if (previous_node->element == NULL){
-        current_node = NULL;
-    } else {
-        free_node(previous_node->element);
-        previous_node->element = NULL;
-        previous_node = NULL;
-        //free(previous_node);
-    }
-
 }
 void delete_node(list_t* h, double bound){
     list_t* current_node = h;
     list_t* previous_node = NULL;
-    while(current_node != NULL){
-    if (current_node->element == NULL){
-
-    }
-    else if (current_node->element->z < bound){
-        if(previous_node == NULL){
-            shuffle_left(current_node);
-        } else {
-        previous_node->next = current_node->next;
-        free_node(current_node->element);
-        current_node->element = NULL;
-        current_node = NULL;
-        //free(current_node);
-        current_node = previous_node;
+    while (current_node != NULL){
+        if (current_node->element == NULL){
+            return;
         }
-    } else {
-        //just go next
-    }
-    previous_node = current_node;
-    current_node = previous_node->next;
+        if (current_node->element->z < bound){
+            if (previous_node == NULL){ //if it is the first node we have to change all elements;
+                free_node(current_node->element);
+                if (current_node->next == NULL){
+                current_node->element = NULL;
+                } else {
+                    current_node->element = current_node->next->element;
+                    list_t* temp = current_node->next->next;
+                    free(current_node->next);
+                    current_node->next=temp;
+                }
+            } else {
+                previous_node->next = current_node->next;//previous node stay
+                free_node(current_node->element);
+                free(current_node);//free up the node
+                current_node=previous_node->next;//current goes to next
+            }
+        } else {
+            previous_node = current_node;
+            current_node = current_node->next;
+        }
     }
 
 
@@ -278,35 +263,23 @@ void free_node(node_t* p){
     if(p == NULL){
         return;
     }
-    if (p->min != NULL){
-    //free(p->min);
-    }
-    if (p->max != NULL){
-    //free(p->max);
-    }
-    if (p->b != NULL){
-        //free(p->b);
-    }
-    if (p->c != NULL){
-        //free(p->c);
-    }
-    if (p->x != NULL){
-        //free(p->x);
-    }
-    if (p->a != NULL){
-        for (int i = 0; i < p->m+1; i+=1){
-            //free(p->a[i]);
+    free(p->min);
+    free(p->max);
+    free(p->b);
+    free(p->c);
+    free(p->x);
+    for (int i = 0; i < p->m+1; i+=1){
+            free(p->a[i]);
         }
-        //free(p->a);
-    }
-    //free(p);
+        free(p->a);
+    free(p);
 }
 void free_list(list_t* h){
     list_t* next = h;
     while (next != NULL){
         free_node(h->element);
         list_t* temp = next->next;
-        //free(next);
+        free(next);
         next = temp;
     }
 }
@@ -344,8 +317,8 @@ int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double
     for (i = 0; i < m+n; i+=1){
         if (s->var[i]==(s->m+s->n-1)){
         if (fabs(s->x[i])>EPSILON){
-            //free(s->x);
-            //free(s->c);
+            free(s->x);
+            free(s->c);
             return 0;
         } else {
             break;
@@ -373,9 +346,8 @@ int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double
     } else {
         //we do nothing
     }
-    //free(s->c);
+    free(s->c);
     s->c = c;
-    ////free(s.y) // TODO if we have memory leak
     s->y = y;
     for (k = n-1; k < n+m-1; k+=1){
         s->var[k] = s->var[k+1];
@@ -401,12 +373,12 @@ int initial(simplex_t* s, int m, int n, double** a, double* b, double* c, double
         next_k:;
     }
     for (i = 0; i < n; i+=1) s->c[i] = t[i];
-    //free(t);
-    //free(s->x);
+    free(t);
+    free(s->x);
     return 1;
 }
 void pivot(simplex_t* s, int row, int col){
-    printf("pivot row=%d col=%d\n", row, col);
+    //printf("pivot row=%d col=%d\n", row, col);
     double** a = s->a;
     double* b = s->b;
     double* c = s->c;
@@ -468,7 +440,7 @@ double xsimplex(int m, int n, double** a, double* b, double* c, double* x, doubl
     simplex_t s;
     int i, row, col;
     if (!initial(&s,m,n,a,b,c,x,y,var)){
-        //free(s.var);
+        free(s.var);
         return NAN;
     }
     while ((col = select_nonbasic(&s))>=0){
@@ -480,7 +452,7 @@ double xsimplex(int m, int n, double** a, double* b, double* c, double* x, doubl
             }
         }
         if (row < 0){
-            //free(s.var);
+            free(s.var);
             return INFINITY;
         }
         pivot(&s, row,col);
@@ -496,7 +468,7 @@ double xsimplex(int m, int n, double** a, double* b, double* c, double* x, doubl
                 x[s.var[n+i]] = s.b[i];
             }
         }
-        //free(s.var);
+        free(s.var);
     } else {
         for(i = 0; i < n; i+=1) x[i] = 0;
         for(i = n; i < n+m; i+=1) x[i] = s.b[i-n];
@@ -538,6 +510,17 @@ void succ(node_t* p, list_t* h, int m, int n, double** a, double* b, double* c, 
     }
     free_node(q);
 }
+
+list_t* pop(list_t* h){
+    list_t* temp = h->next;
+    free(h);
+    return temp;
+}
+node_t* peek(list_t* h){
+    return h->element;
+}
+
+
 double intopt(int m, int n, double** a, double* b, double* c, double* x){
     node_t* p = initial_node(m, n, a,b,c);
     list_t* h = malloc(sizeof(list_t));
@@ -557,13 +540,12 @@ double intopt(int m, int n, double** a, double* b, double* c, double* x){
     }
     branch(p,z);
     while (h != NULL){
-        p = h->element;
+        p = peek(h);
+        h = pop(h);
         if (p == NULL){
+            if (h!=NULL) continue;
             break;
         }
-        list_t* temp = h->next;
-        //free(h);
-        h = temp;
         if(h == NULL){
             h = malloc(sizeof(list_t));
             h->element = NULL;
@@ -579,40 +561,6 @@ double intopt(int m, int n, double** a, double* b, double* c, double* x){
     if (z == -INFINITY) return NAN;
     return z;
 }
-/*
-int main(int argc, char** argv){
-    int m,n;
-    scanf("%d %d", &m, &n);
-    double** a = make_matrix(m,n+1);
-    double* b = make_vector(m);
-    double* x = make_vector(n+1);
-    double* c = make_vector(n);
-    for (int i = 0; i < n; i += 1){
-        scanf("%lf", &c[i]);
-    }
-
-    for (int i = 0; i < m; i += 1){
-        for (int j = 0; j < n; j += 1){
-            scanf("%lf", &a[i][j]);      
-        }
-    }
-    for (int i = 0; i < m; i += 1){
-        scanf("%lf", &b[i]);     
-    }
-    double y = 0;
-    double solution = intopt(m, n, a,b,c,x);
-    printf("\nz = %f\n", solution);
-    //free_simplex(s);
-    for (int i = 0; i < m; i+=1){
-        //free(a[i]);
-    }
-    //free(a);
-    //free(b);
-    //free(c);
-    //free(x);
-    return 0;
-}
-*/
 
 int main(int argc, char** argv){
     int m,n;
@@ -638,12 +586,11 @@ int main(int argc, char** argv){
     printf("\nz = %f\n", solution);
     //free_simplex(s);
     for (int i = 0; i < m; i+=1){
-        //free(a[i]);
+        free(a[i]);
     }
-    //free(a);
-    //free(b);
-    //free(c);
-    //free(x);
+    free(a);
+    free(b);
+    free(c);
+    free(x);
     return 0;
 }
-

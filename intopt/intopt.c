@@ -197,51 +197,35 @@ int integer(node_t* p){
     return 1;
 }
 void shuffle_left(list_t* h){
-    list_t* current_node = h;
-    list_t* previous_node = NULL;
-    free_node(current_node->element);
-    current_node->element = NULL;
-    previous_node = current_node;
-    current_node=current_node->next;
-    while (current_node!=NULL){
-        previous_node->element = current_node->element;
-        previous_node = current_node;
-        current_node = current_node->next;
-    }
-    if (previous_node->element == NULL){
-        current_node = NULL;
-    } else {
-        free_node(previous_node->element);
-        previous_node->element = NULL;
-        previous_node = NULL;
-        //free(previous_node);
-    }
-
 }
 void delete_node(list_t* h, double bound){
     list_t* current_node = h;
     list_t* previous_node = NULL;
-    while(current_node != NULL){
-    if (current_node->element == NULL){
-
-    }
-    else if (current_node->element->z < bound){
-        if(previous_node == NULL){
-            shuffle_left(current_node);
-        } else {
-        previous_node->next = current_node->next;
-        /*free_node(current_node->element);
-        current_node->element = NULL;
-        current_node = NULL;
-        free(current_node);
-        */
-        current_node = previous_node;
+    while (current_node != NULL){
+        if (current_node->element == NULL){
+            return;
         }
-    } else {
-        //just go next
-    }
-    previous_node = current_node;
-    current_node = previous_node->next;
+        if (current_node->element->z < bound){
+            if (previous_node == NULL){ //if it is the first node we have to change all elements;
+                free_node(current_node->element);
+                if (current_node->next == NULL){
+                current_node->element = NULL;
+                } else {
+                    current_node->element = current_node->next->element;
+                    list_t* temp = current_node->next->next;
+                    free(current_node->next);
+                    current_node->next=temp;
+                }
+            } else {
+                previous_node->next = current_node->next;//previous node stay
+                free_node(current_node->element);
+                free(current_node);//free up the node
+                current_node=previous_node->next;//current goes to next
+            }
+        } else {
+            previous_node = current_node;
+            current_node = current_node->next;
+        }
     }
 
 
@@ -279,35 +263,23 @@ void free_node(node_t* p){
     if(p == NULL){
         return;
     }
-    if (p->min != NULL){
-    //free(p->min);
-    }
-    if (p->max != NULL){
-    //free(p->max);
-    }
-    if (p->b != NULL){
-        //free(p->b);
-    }
-    if (p->c != NULL){
-        //free(p->c);
-    }
-    if (p->x != NULL){
-        //free(p->x);
-    }
-    if (p->a != NULL){
-        for (int i = 0; i < p->m+1; i+=1){
-            //free(p->a[i]);
+    free(p->min);
+    free(p->max);
+    free(p->b);
+    free(p->c);
+    free(p->x);
+    for (int i = 0; i < p->m+1; i+=1){
+            free(p->a[i]);
         }
-        //free(p->a);
-    }
-    //free(p);
+        free(p->a);
+    free(p);
 }
 void free_list(list_t* h){
     list_t* next = h;
     while (next != NULL){
         free_node(h->element);
         list_t* temp = next->next;
-        //free(next);
+        free(next);
         next = temp;
     }
 }
@@ -538,6 +510,17 @@ void succ(node_t* p, list_t* h, int m, int n, double** a, double* b, double* c, 
     }
     free_node(q);
 }
+
+list_t* pop(list_t* h){
+    list_t* temp = h->next;
+    free(h);
+    return temp;
+}
+node_t* peek(list_t* h){
+    return h->element;
+}
+
+
 double intopt(int m, int n, double** a, double* b, double* c, double* x){
     node_t* p = initial_node(m, n, a,b,c);
     list_t* h = malloc(sizeof(list_t));
@@ -557,11 +540,8 @@ double intopt(int m, int n, double** a, double* b, double* c, double* x){
     }
     branch(p,z);
     while (h != NULL){
-        p = h->element;
-        
-        list_t* temp = h->next;
-        //free(h);
-        h = temp;
+        p = peek(h);
+        h = pop(h);
         if (p == NULL){
             if (h!=NULL) continue;
             break;
@@ -582,7 +562,6 @@ double intopt(int m, int n, double** a, double* b, double* c, double* x){
     return z;
 }
 /*
-
 int main(int argc, char** argv){
     int m,n;
     scanf("%d %d", &m, &n);
@@ -615,5 +594,4 @@ int main(int argc, char** argv){
     //free(x);
     return 0;
 }
-
 */
