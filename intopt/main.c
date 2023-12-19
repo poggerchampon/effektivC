@@ -105,7 +105,6 @@ static void check(void)
 
 	if (s != 1)
 		goto dealloc;
-
 	if ((isfinite(z) == 0) ^ (isfinite(z_sol) == 0)) {
 		fail = 1;
 		make_score();
