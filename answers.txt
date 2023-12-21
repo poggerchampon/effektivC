@@ -45,3 +45,35 @@ rldicr b.c.o EAT full ?
 lbzx slow
 13.
 rename is to our understanding using different registers to allow more parallelism in the CPU without having to wait for other (non-related) instructions to finish.
+
+Lab 6
+4.
+C - Common, Constant
+T - Text section
+U - undefined
+G - Initialized data section.
+
+Os = Space optimization.
+5.
+2061MHz
+They seem to be improving in speed.
+6.
+stvx = 5
+lvx = 6
+vmaddfp = 0
+vperm = 0
+7.
+
+1st:
+Perm  Towers  Queens   Intmm      Mm  Puzzle   Quick  Bubble    Tree     FFT
+348     635    1325      61      58    1032      50     427      79     160
+Perm  Towers  Queens   Intmm      Mm  Puzzle   Quick  Bubble    Tree     FFT
+242     242     455      44      54     698      46     469      79     237
+
+
+
+It seems to have optimized away the method call and instead gone with just doing 10 + 13 in the main function
+
+8.
+Need to transpose the C matrix to keep the row static and therefor in cachememory which would allow the usage of vector instructions.
+
